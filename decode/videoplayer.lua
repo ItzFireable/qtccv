@@ -228,7 +228,7 @@ function audio()
 		local dir, speaker = findPer("speaker")
 
 		if (speaker ~= nil) then
-		    for chunk in io.lines(audiofile, 16 * 1024) do
+		    for chunk in io.lines("badapple.dfpwm", 16 * 1024) do
 			local buffer = decoder(chunk)
 
 			while not speaker.playAudio(buffer) do
