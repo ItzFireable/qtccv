@@ -1,6 +1,9 @@
 require("apis.hexscreen")
 require("apis.bitreader")
 local wave = require("apis.wave")
+local dfpwm = require("cc.audio.dfpwm")
+
+local decoder = dfpwm.make_decoder()
 
 local math = math
 local sleep = sleep
@@ -150,34 +153,17 @@ local audiofile
 
 local dPos = videofile:find("%.")
 if (dPos) then
-	audiofile = videofile:sub(1, dPos-1) .. ".nbs"
+	audiofile = videofile:sub(1, dPos-1) .. ".dfpwm"
 	
 else
-	audiofile = videofile .. ".nbs"
+	audiofile = videofile .. ".dfpwm"
 	videofile = videofile .. ".qtv"
 
 end
 
--- Read the audio file
-local wc
-if (audiofile and fs.exists(audiofile)) then
-	local dir, speaker = findPer("speaker")
-	
-	if (speaker ~= nil) then
-		wc = wave.createContext()
-		wc:addOutput(dir)
-		local t = wave.loadTrack(audiofile)
-		wc:addInstance(wave.createInstance(t))
-		
-	end
-
-end
-
-
 -- Read the video file
 if (not fs.exists(videofile)) then
 	error("video file '" .. videofile .. "' not found.")
-
 end
 
 local f = fs.open(videofile, "rb")
@@ -236,48 +222,71 @@ end
 
 hs.buffer = frame
 local status, err
-while true do
-	status, err = pcall(readFrame)
 
-	if (not status) then
-		if (not loop) then
-			break
-		end
+function audio()
+	local wc
+	if (audiofile and fs.exists(audiofile)) then
+		local dir, speaker = findPer("speaker")
 
-		reader:reset()
-		reader:readNumber(5)
-		reader:readNumber(10)
-		reader:readNumber(9)
+		if (speaker ~= nil) then
+			for chunk in io.lines(audioFile, 16 * 1024) do
+			local buffer = decoder(chunk)
 
-		frame = {}
-		for i=1, height do
-			frame[i] = {}
-			fri = frame[i]
-			for j=1, width do
-				fri[j] = false
+			while not speaker.playAudio(buffer) do
+			    os.pullEvent("speaker_audio_empty")
 			end
+		    end
 		end
 
-		hs.buffer = frame
-
-		if (wc) then
-			for i = 1, #wc.instances do
-				wc.instances[i].playing = true
-				wc.instances[i].tick = 1
-				
-			end
-		end
-
-	else
-		hs:draw()
-
-		if (wc) then
-			pcall(wc.update, wc, 0.05)
-			
-		end
-		
 	end
-
-	sleep(0.05 * sleep_ticks)
-	
 end
+
+function video()
+	while true do
+		status, err = pcall(readFrame)
+
+		if (not status) then
+			if (not loop) then
+				break
+			end
+
+			reader:reset()
+			reader:readNumber(5)
+			reader:readNumber(10)
+			reader:readNumber(9)
+
+			frame = {}
+			for i=1, height do
+				frame[i] = {}
+				fri = frame[i]
+				for j=1, width do
+					fri[j] = false
+				end
+			end
+
+			hs.buffer = frame
+
+			if (wc) then
+				for i = 1, #wc.instances do
+					wc.instances[i].playing = true
+					wc.instances[i].tick = 1
+
+				end
+			end
+
+		else
+			hs:draw()
+
+			if (wc) then
+				pcall(wc.update, wc, 0.05)
+
+			end
+
+		end
+
+		sleep(0.05 * sleep_ticks)
+
+	end
+end
+
+parallel.waitForAny(video, audio)
