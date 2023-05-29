@@ -224,7 +224,6 @@ hs.buffer = frame
 local status, err
 
 function audio()
-	local wc
 	if (audiofile and fs.exists(audiofile)) then
 		local dir, speaker = findPer("speaker")
 
@@ -266,21 +265,8 @@ function video()
 
 			hs.buffer = frame
 
-			if (wc) then
-				for i = 1, #wc.instances do
-					wc.instances[i].playing = true
-					wc.instances[i].tick = 1
-
-				end
-			end
-
 		else
 			hs:draw()
-
-			if (wc) then
-				pcall(wc.update, wc, 0.05)
-
-			end
 
 		end
 
