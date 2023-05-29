@@ -1,6 +1,5 @@
 require("apis.hexscreen")
 require("apis.bitreader")
-local wave = require("apis.wave")
 local dfpwm = require("cc.audio.dfpwm")
 
 local decoder = dfpwm.make_decoder()
